@@ -6,7 +6,6 @@ defmodule Needle.UID.UlidTest do
 
   # generate/0
 
-
   test "generate/1 encodes a timestamp" do
     {:ok, utc_date, _} = DateTime.from_iso8601("2015-02-10T15:00:00Z")
 
@@ -26,7 +25,6 @@ defmodule Needle.UID.UlidTest do
     assert ulid1 != ulid2
   end
 
-
   # cast/1
 
   test "cast/1 returns valid UID" do
@@ -40,15 +38,15 @@ defmodule Needle.UID.UlidTest do
   end
 
   test "cast/1 returns error when encoding is too short" do
-    assert {:error, _} = Needle.UID.cast("0000000000000000000000000") 
+    assert {:error, _} = Needle.UID.cast("0000000000000000000000000")
   end
 
   test "cast/1 returns error when encoding is too long" do
-    assert {:error, _} = Needle.UID.cast("000000000000000000000000000") 
+    assert {:error, _} = Needle.UID.cast("000000000000000000000000000")
   end
 
   test "cast/1 returns error when encoding contains letter I" do
-    assert {:error, _} = Needle.UID.cast("I0000000000000000000000000") 
+    assert {:error, _} = Needle.UID.cast("I0000000000000000000000000")
   end
 
   test "cast/1 returns error when encoding contains letter L" do
@@ -56,15 +54,15 @@ defmodule Needle.UID.UlidTest do
   end
 
   test "cast/1 returns error when encoding contains letter O" do
-    assert {:error, _} =  Needle.UID.cast("O0000000000000000000000000") 
+    assert {:error, _} = Needle.UID.cast("O0000000000000000000000000")
   end
 
   test "cast/1 returns error when encoding contains letter U" do
-    assert {:error, _} = Needle.UID.cast("U0000000000000000000000000") 
+    assert {:error, _} = Needle.UID.cast("U0000000000000000000000000")
   end
 
   test "cast/1 returns error for invalid encoding" do
-    assert {:error, _} = Needle.UID.cast("$0000000000000000000000000") 
+    assert {:error, _} = Needle.UID.cast("$0000000000000000000000000")
   end
 
   # dump/1
