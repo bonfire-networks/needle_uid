@@ -40,11 +40,15 @@ if Code.ensure_loaded?(Uniq.UUID) do
       assert {:error, _} = UID.cast(@test_ulid_invalid_characters, @params)
       assert {:error, _} = UID.cast(@test_ulid_invalid_format, @params)
       assert UID.cast(@test_ulid, @belongs_to_params) == {:ok, @test_ulid}
+
+      assert {:error, _} = UID.cast("http://localhost/Erdman_Runolfsdottir", @params)
+      refute UID.is_ulid?("http://localhost/Erdman_Runolfsdottir")
     end
 
     test "load/3" do
       assert UID.load(@test_uuid, @loader, @params) == {:ok, @test_ulid}
       assert UID.load(@test_uuid_null, @loader, @params) == {:ok, @test_ulid_null}
+      # FIXME
       assert UID.load(@test_uuid_invalid_characters, @loader, @params) == :error
       assert UID.load(@test_uuid_invalid_format, @loader, @params) == :error
       assert UID.load(@test_ulid, @loader, @params) == :error

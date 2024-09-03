@@ -37,13 +37,12 @@ defmodule Needle.UID do
   def embed_as(format, _), do: Needle.ULID.embed_as(format)
 
   @impl true
-  def autogenerate(params \\ nil), do: generate(params)
+  def autogenerate(params), do: generate(params)
   def generate(params_or_timestamp \\ nil)
   def generate(%{prefix: _} = params), do: Pride.autogenerate(params)
   def generate(timestamp) when is_integer(timestamp), do: Needle.ULID.generate(timestamp)
-  def generate(nil), do: Needle.ULID.generate()
 
-  def generate(schema) when is_atom(schema) do
+  def generate(schema) when is_atom(schema) and not is_nil(schema) do
     debug(schema, "gen schema")
 
     if function_exported?(schema, :__schema__, 1) do
@@ -84,14 +83,25 @@ defmodule Needle.UID do
   @impl true
   def cast(term, params \\ nil)
   def cast(nil, _params), do: {:ok, nil}
-  def cast(term, %{prefix: _} = params), do: Pride.cast(term, params)
+
+  def cast(term, %{prefix: _} = params) do
+    with {:error, _} <- Pride.cast(term, params) do
+      # for old ULIDs in a prefixed table
+      if Needle.ULID.valid?(term) do
+        {:ok, term}
+      else
+        {:error, message: "Not recognised as valid Prefixed UUIDv7 or ULID"}
+      end
+    end
+  end
+
   def cast(<<_::bytes-size(16)>> = value, _), do: {:ok, value}
 
-  def cast(<<_::bytes-size(26)>> = value, _) do
+  def cast(<<_::bytes-size(26)>> = value, params) do
     if Needle.ULID.valid?(value) do
       {:ok, value}
     else
-      {:error, message: "Not recognised as valid ULID"}
+      Pride.cast(value, params)
     end
   end
 
@@ -179,19 +189,23 @@ defmodule Needle.UID do
       iex> is_uuid?("invalid_uuid")
       false
   """
-  def is_uuid?(str) when is_binary(str) and byte_size(str) == 36 do
+  def is_uuid?(str, params \\ nil)
+
+  def is_uuid?(str, params) when is_binary(str) and byte_size(str) == 36 do
     with {:ok, _} <- Ecto.UUID.cast(str) do
       true
     else
-      _ -> is_pride?(str)
+      _ -> is_pride?(str, params)
     end
   end
 
-  def is_uuid?(str), do: is_pride?(str)
+  def is_uuid?(str, params), do: is_pride?(str, params)
 
-  def is_pride?(str) when is_binary(str) and byte_size(str) > 23 do
-    Pride.valid?(str)
+  def is_pride?(str, params \\ nil)
+
+  def is_pride?(str, params) do
+    Pride.valid?(str, params)
   end
 
-  def is_pride?(_), do: false
+  def is_pride?(_, _), do: false
 end

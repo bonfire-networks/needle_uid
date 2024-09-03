@@ -1,7 +1,7 @@
 if Code.ensure_loaded?(Uniq.UUID) do
   defmodule Needle.UID.PrideTest do
     use ExUnit.Case, async: true
-
+    import Untangle
     alias Needle.UID
     alias Uniq.UUID
 
@@ -56,6 +56,10 @@ if Code.ensure_loaded?(Uniq.UUID) do
       assert {:error, _} = UID.cast(@test_prefixed_uuid_invalid_characters, @params)
       assert {:error, _} = UID.cast(@test_prefixed_uuid_invalid_format, @params)
       assert UID.cast(@test_prefixed_uuid, @belongs_to_params) == {:ok, @test_prefixed_uuid}
+
+      assert {:error, _} = UID.cast("http://localhost/Erdman_Runolfsdottir", @params)
+      refute UID.is_uuid?("http://localhost/Erdman_Runolfsdottir", @params)
+      refute UID.is_uuid?("http://localhost/Erdman_Runolfsdottir")
     end
 
     test "load/3" do
@@ -91,7 +95,9 @@ if Code.ensure_loaded?(Uniq.UUID) do
     end
 
     test "generate/1 looks up the schema to determine what to generate" do
-      ulid = Needle.UID.generate(TestSchema)
+      ulid =
+        Needle.UID.generate(TestSchema)
+        |> debug()
 
       assert Needle.UID.is_uuid?(ulid)
       refute Needle.UID.is_ulid?(ulid)
