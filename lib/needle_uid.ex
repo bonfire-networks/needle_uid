@@ -3,6 +3,9 @@ defmodule Needle.UID do
   use Ecto.ParameterizedType
   import Untangle, except: [dump: 3]
 
+  @pride_enabled Application.compile_env(:needle_uid, :pride_enabled, false)
+  @ulid_enabled Application.compile_env(:needle_uid, :ulid_enabled, true)
+
   @doc "translates alphanumerics into a sentinel ID value"
   def synthesise!(x) when is_binary(x) do
     # TODO with UUID
@@ -17,60 +20,99 @@ defmodule Needle.UID do
 
   @impl true
   def init(opts) do
-    if Keyword.get(opts, :prefix) do
-      IO.warn("use prefixed UUIDv7 for #{inspect(opts)}")
-      Pride.init(opts)
+    if @pride_enabled do
+      if Keyword.get(opts, :prefix) do
+        IO.warn("use prefixed UUIDv7 for #{inspect(opts)}")
+        Pride.init(opts)
+      else
+        IO.warn("fallback to ULID for #{inspect(opts)}")
+        Pride.init(opts ++ [allow_unprefixed: true])
+      end
     else
-      IO.warn("fallback to ULID for #{inspect(opts)}")
-      Pride.init(opts ++ [allow_unprefixed: true])
+      opts
     end
   end
 
   @impl true
   def equal?(a, b, params \\ nil)
-  def equal?(a, b, %{prefix: _} = params), do: Pride.equal?(a, b, params)
-  def equal?(a, b, _), do: Needle.ULID.equal?(a, b)
+
+  if @pride_enabled do
+    def equal?(a, b, %{prefix: _} = params), do: Pride.equal?(a, b, params)
+  end
+
+  if @ulid_enabled do
+    def equal?(a, b, _), do: Needle.ULID.equal?(a, b)
+  end
 
   @impl true
   def embed_as(format, params \\ nil)
-  def embed_as(format, %{prefix: _} = params), do: Pride.embed_as(format, params)
-  def embed_as(format, _), do: Needle.ULID.embed_as(format)
+
+  if @pride_enabled do
+    def embed_as(format, %{prefix: _} = params), do: Pride.embed_as(format, params)
+  end
+
+  if @ulid_enabled do
+    def embed_as(format, _), do: Needle.ULID.embed_as(format)
+  end
 
   @impl true
   def autogenerate(params), do: generate(params)
   def generate(params_or_timestamp \\ nil)
-  def generate(%{prefix: _} = params), do: Pride.autogenerate(params)
-  def generate(timestamp) when is_integer(timestamp), do: Needle.ULID.generate(timestamp)
 
-  def generate(schema) when is_atom(schema) and not is_nil(schema) do
-    debug(schema, "gen schema")
+  if @pride_enabled do
+    def generate(%{prefix: _} = params), do: Pride.autogenerate(params)
+  end
 
-    if function_exported?(schema, :__schema__, 1) do
-      # hopefully ok to just take the first?
-      case schema.__schema__(:primary_key) |> List.first() |> debug("gen primary_key first") do
-        nil -> Needle.ULID.generate()
-        field -> generate(schema, field)
+  if @ulid_enabled do
+    def generate(timestamp) when is_integer(timestamp), do: Needle.ULID.generate(timestamp)
+  end
+
+  if @pride_enabled do
+    def generate(schema) when is_atom(schema) and not is_nil(schema) do
+      debug(schema, "gen schema")
+
+      if function_exported?(schema, :__schema__, 1) do
+        # hopefully ok to just take the first?
+        case schema.__schema__(:primary_key) |> List.first() |> debug("gen primary_key first") do
+          nil ->
+            if @ulid_enabled do
+              Needle.ULID.generate()
+            end
+
+          field ->
+            generate(schema, field)
+        end
+      else
+        if @ulid_enabled do
+          Needle.ULID.generate()
+        end
       end
-    else
-      Needle.ULID.generate()
     end
   end
 
-  def generate(_), do: Needle.ULID.generate()
+  if @ulid_enabled do
+    def generate(_), do: Needle.ULID.generate()
+  end
 
-  def generate(schema, field) when is_atom(schema) do
-    case Pride.params(schema, field) |> debug("gen prefix") do
-      %{prefix: _} = params ->
-        Pride.autogenerate(params)
+  if @pride_enabled do
+    def generate(schema, field) when is_atom(schema) do
+      case Pride.params(schema, field) |> debug("gen prefix") do
+        %{prefix: _} = params ->
+          Pride.autogenerate(params)
 
-      _ ->
-        Needle.ULID.generate()
+        _ ->
+          if @ulid_enabled do
+            Needle.ULID.generate()
+          end
+      end
     end
   end
 
   @doc "Returns the timestamp of an encoded or unencoded UID"
-  def timestamp(<<_::bytes-size(26)>> = encoded) do
-    Needle.ULID.timestamp(encoded)
+  if @ulid_enabled do
+    def timestamp(<<_::bytes-size(26)>> = encoded) do
+      Needle.ULID.timestamp(encoded)
+    end
   end
 
   def timestamp(encoded) do
@@ -78,19 +120,23 @@ defmodule Needle.UID do
   end
 
   @doc """
-  Casts an encoded string to ID 
+  Casts an encoded string to ID. Transforms outside data into runtime data.
+
+  Used to (potentially) convert your data into an internal normalized representation which will be part of your changesets. It also used for verifying that something is actually valid input data for your type.
   """
   @impl true
   def cast(term, params \\ nil)
   def cast(nil, _params), do: {:ok, nil}
 
-  def cast(term, %{prefix: _} = params) do
-    with {:error, _} <- Pride.cast(term, params) do
-      # for old ULIDs in a prefixed table
-      if Needle.ULID.valid?(term) do
-        {:ok, term}
-      else
-        {:error, message: "Not recognised as valid Prefixed UUIDv7 or ULID"}
+  if @pride_enabled do
+    def cast(term, %{prefix: _} = params) do
+      with {:error, _} <- Pride.cast(term, params) do
+        # for old ULIDs in a prefixed table
+        if @ulid_enabled and Needle.ULID.valid?(term) do
+          {:ok, term}
+        else
+          {:error, message: "Not recognised as valid Prefixed UUIDv7 or ULID"}
+        end
       end
     end
   end
@@ -98,14 +144,21 @@ defmodule Needle.UID do
   def cast(<<_::bytes-size(16)>> = value, _), do: {:ok, value}
 
   def cast(<<_::bytes-size(26)>> = value, params) do
-    if Needle.ULID.valid?(value) do
+    if @ulid_enabled and Needle.ULID.valid?(value) do
       {:ok, value}
     else
-      Pride.cast(value, params)
+      if @pride_enabled do
+        Pride.cast(value, params)
+      else
+        {:error, message: "Invalid ULID"}
+      end
     end
   end
 
-  def cast(term, %{} = params), do: Pride.cast(term, params)
+  if @pride_enabled do
+    def cast(term, %{} = params), do: Pride.cast(term, params)
+  end
+
   def cast(_, _), do: {:error, message: "Not recognised as valid Prefixed UUIDv7 or ULID"}
 
   @doc """
@@ -126,14 +179,24 @@ defmodule Needle.UID do
   end
 
   @doc """
-  Converts an encoded ID into a binary.
+  Converts an encoded ID into a binary. Used to get your data ready to be written to the database. Transforms anything (outside data or runtime data) into database column data
   """
   @impl true
   def dump(value, dumper \\ nil, params \\ nil)
   def dump(nil, _, _), do: {:ok, nil}
-  def dump(value, dumper, %{prefix: _} = params), do: Pride.dump(value, dumper, params)
-  def dump(<<_::bytes-size(26)>> = encoded, _, _), do: Needle.ULID.decode(encoded)
-  def dump(value, dumper, %{} = params), do: Pride.dump(value, dumper, params)
+
+  if @pride_enabled do
+    def dump(value, dumper, %{prefix: _} = params), do: Pride.dump(value, dumper, params)
+  end
+
+  if @ulid_enabled do
+    def dump(<<_::bytes-size(26)>> = encoded, _, _), do: Needle.ULID.decode(encoded)
+  end
+
+  if @pride_enabled do
+    def dump(value, dumper, %{} = params), do: Pride.dump(value, dumper, params)
+  end
+
   def dump(_, _, _), do: :error
 
   @impl true
@@ -145,21 +208,32 @@ defmodule Needle.UID do
   end
 
   @doc """
-  Converts a binary ID into an encoded string.
+  Converts a binary ID into an encoded string. Transforms database column data into runtime data.
   """
   @impl true
   def load(value, loader \\ nil, params \\ nil)
   def load(nil, _, _), do: {:ok, nil}
-  def load(value, loader, %{prefix: _} = params), do: Pride.load(value, loader, params)
 
-  def load(value, loader, %{} = params) do
-    with :error <- Pride.load(value, loader, params) do
-      Needle.ULID.encode(value)
+  if @pride_enabled do
+    def load(value, loader, %{prefix: _} = params), do: Pride.load(value, loader, params)
+  end
+
+  if @pride_enabled do
+    def load(value, loader, %{} = params) do
+      with :error <- Pride.load(value, loader, params) do
+        if @ulid_enabled do
+          Needle.ULID.encode(value)
+        else
+          :error
+        end
+      end
     end
   end
 
-  def load(bytes, _, _) when is_binary(bytes) and byte_size(bytes) == 16,
-    do: Needle.ULID.encode(bytes)
+  if @ulid_enabled do
+    def load(bytes, _, _) when is_binary(bytes) and byte_size(bytes) == 16,
+      do: Needle.ULID.encode(bytes)
+  end
 
   def load(_, _, _), do: :error
 
@@ -195,7 +269,12 @@ defmodule Needle.UID do
     with {:ok, _} <- Ecto.UUID.cast(str) do
       true
     else
-      _ -> is_pride?(str, params)
+      _ ->
+        if @pride_enabled do
+          is_pride?(str, params)
+        else
+          false
+        end
     end
   end
 
@@ -204,7 +283,11 @@ defmodule Needle.UID do
   def is_pride?(str, params \\ nil)
 
   def is_pride?(str, params) do
-    Pride.valid?(str, params)
+    case Pride.valid_or_uuid(str, params) do
+      true -> true
+      false -> false
+      uuid -> uuid
+    end
   end
 
   def is_pride?(_, _), do: false
