@@ -238,6 +238,23 @@ defmodule Needle.UID do
   def load(_, _, _), do: :error
 
   @doc """
+  Takes a string and returns true if it is a valid UUID or ULID.
+
+  ## Examples
+      iex> valid?("01J3MQ2Q4RVB1WTE3KT1D8ZNX1")
+      true
+
+      iex> valid?("550e8400-e29b-41d4-a716-446655440000")
+      true
+
+      iex> valid?("invalid_id")
+      false
+  """
+  def valid?(str, params \\ nil) do
+    is_ulid?(str) || is_uuid?(str, params)
+  end
+
+  @doc """
   Takes a string and returns true if it is a valid ULID (Universally Unique Lexicographically Sortable Identifier).
 
   ## Examples
