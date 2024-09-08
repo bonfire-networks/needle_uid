@@ -3,7 +3,7 @@ defmodule Needle.UID do
   use Ecto.ParameterizedType
   import Untangle, except: [dump: 3]
 
-  @pride_enabled Application.compile_env(:needle_uid, :pride_enabled, false)
+  @pride_enabled Application.compile_env(:needle_uid, :pride_enabled, true)
   @ulid_enabled Application.compile_env(:needle_uid, :ulid_enabled, true)
 
   @doc "translates alphanumerics into a sentinel ID value"
@@ -247,6 +247,9 @@ defmodule Needle.UID do
       iex> valid?("550e8400-e29b-41d4-a716-446655440000")
       true
 
+      iex> is_uuid?("test_3TUIKuXX5mNO2jSA41bsDx")
+      true
+
       iex> valid?("invalid_id")
       false
   """
@@ -277,8 +280,12 @@ defmodule Needle.UID do
       iex> is_uuid?("550e8400-e29b-41d4-a716-446655440000")
       true
 
+      iex> is_uuid?("test_3TUIKuXX5mNO2jSA41bsDx")
+      true
+
       iex> is_uuid?("invalid_uuid")
       false
+      
   """
   def is_uuid?(str, params \\ nil)
 
@@ -300,12 +307,14 @@ defmodule Needle.UID do
   def is_pride?(str, params \\ nil)
 
   def is_pride?(str, params) do
-    case Pride.valid_or_uuid(str, params) do
-      true -> true
-      false -> false
-      uuid -> uuid
-    end
+    # case Pride.valid_or_uuid(str, params) do
+    #   true -> true
+    #   false -> false
+    #   uuid -> uuid
+    # end
+    Pride.valid?(str, params)
   end
 
   def is_pride?(_, _), do: false
+
 end
