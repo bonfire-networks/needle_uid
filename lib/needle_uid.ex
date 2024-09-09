@@ -29,7 +29,7 @@ defmodule Needle.UID do
         Pride.init(opts ++ [allow_unprefixed: true])
       end
     else
-      opts
+      Map.new(opts)
     end
   end
 
@@ -159,7 +159,10 @@ defmodule Needle.UID do
     def cast(term, %{} = params), do: Pride.cast(term, params)
   end
 
-  def cast(_, _), do: {:error, message: "Not recognised as valid Prefixed UUIDv7 or ULID"}
+  def cast(value, params) do
+    debug(value, "Could not recognise value (with params: #{inspect(params)}) ")
+    {:error, message: "Not recognised as valid ULID or Prefixed UUIDv7"}
+  end
 
   @doc """
   Same as `cast/1` but raises `Ecto.CastError` on invalid arguments.
@@ -316,5 +319,4 @@ defmodule Needle.UID do
   end
 
   def is_pride?(_, _), do: false
-
 end

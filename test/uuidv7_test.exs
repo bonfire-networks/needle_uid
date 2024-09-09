@@ -1,9 +1,8 @@
-if Code.ensure_loaded?(Uniq.UUID) do
+if Application.compile_env(:needle_uid, :pride_enabled, true) and Code.ensure_loaded?(Uniq.UUID) do
   defmodule Needle.UID.PrideTest do
     use ExUnit.Case, async: true
     import Untangle
     alias Needle.UID
-    alias Uniq.UUID
 
     # function_exported?(Needle.UID, :type, 1)
     # |> IO.inspect(label: "have func")
@@ -34,11 +33,11 @@ if Code.ensure_loaded?(Uniq.UUID) do
     @dumper nil
 
     @test_prefixed_uuid "test_3TUIKuXX5mNO2jSA41bsDx"
-    @test_uuid UUID.to_string("7232b37d-fc13-44c0-8e1b-9a5a07e24921", :raw)
+    @test_uuid Uniq.UUID.to_string("7232b37d-fc13-44c0-8e1b-9a5a07e24921", :raw)
     @test_prefixed_uuid_with_leading_zero "test_02tREKF6r6OCO2sdSjpyTm"
-    @test_uuid_with_leading_zero UUID.to_string("0188a516-bc8c-7c5a-9b68-12651f558b9e", :raw)
+    @test_uuid_with_leading_zero Uniq.UUID.to_string("0188a516-bc8c-7c5a-9b68-12651f558b9e", :raw)
     @test_prefixed_uuid_null "test_0000000000000000000000"
-    @test_uuid_null UUID.to_string("00000000-0000-0000-0000-000000000000", :raw)
+    @test_uuid_null Uniq.UUID.to_string("00000000-0000-0000-0000-000000000000", :raw)
     @test_prefixed_uuid_invalid_characters "test_" <> String.duplicate(".", 32)
     @test_uuid_invalid_characters String.duplicate(".", 22)
     @test_prefixed_uuid_invalid_format "test_" <> String.duplicate("x", 31)
@@ -91,16 +90,16 @@ if Code.ensure_loaded?(Uniq.UUID) do
     test "autogenerate/1" do
       assert prefixed_uuid = UID.autogenerate(@params)
       assert {:ok, uuid} = UID.dump(prefixed_uuid, nil, @params)
-      assert {:ok, %UUID{format: :raw, version: 7}} = UUID.parse(uuid)
+      # assert {:ok, %Uniq.UUID{format: :raw, version: 7}} = Uniq.UUID.parse(uuid)
+      assert {:ok, prefixed_uuid} == UID.load(uuid, nil, @params)
     end
 
     test "generate/1 looks up the schema to determine what to generate" do
-      ulid =
+      uuid =
         Needle.UID.generate(TestSchema)
-        |> debug()
 
-      assert Needle.UID.is_uuid?(ulid)
-      refute Needle.UID.is_ulid?(ulid)
+      assert Needle.UID.is_uuid?(uuid)
+      refute Needle.UID.is_ulid?(uuid)
     end
   end
 end
