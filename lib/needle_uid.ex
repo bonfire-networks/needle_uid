@@ -65,6 +65,8 @@ defmodule Needle.UID do
 
   if @ulid_enabled do
     def generate(timestamp) when is_integer(timestamp), do: Needle.ULID.generate(timestamp)
+    # def generate(%Date{} =timestamp), do: Needle.ULID.generate(timestamp) # TODO
+    def generate(%DateTime{} =timestamp), do: Needle.ULID.generate(timestamp)
   end
 
   if @pride_enabled do
