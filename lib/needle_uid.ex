@@ -118,7 +118,8 @@ defmodule Needle.UID do
   end
 
   def timestamp(encoded) do
-    # TODO for UUID
+    debug(encoded, "TODO")
+    raise "#TODO for UUID"
   end
 
   @doc """
@@ -169,7 +170,6 @@ defmodule Needle.UID do
   @doc """
   Same as `cast/1` but raises `Ecto.CastError` on invalid arguments.
   """
-  @impl true
   def cast!(value, params \\ nil) do
     case cast(value, params) do
       {:ok, uid} ->
@@ -204,7 +204,6 @@ defmodule Needle.UID do
 
   def dump(_, _, _), do: :error
 
-  @impl true
   def dump!(encoded, dumper \\ nil, params \\ nil) do
     case dump(encoded, dumper, params) do
       {:ok, uid} -> uid
@@ -299,11 +298,7 @@ defmodule Needle.UID do
       true
     else
       _ ->
-        if @pride_enabled do
-          is_pride?(str, params)
-        else
-          false
-        end
+      is_pride?(str, params)
     end
   end
 
@@ -312,13 +307,7 @@ defmodule Needle.UID do
   def is_pride?(str, params \\ nil)
 
   def is_pride?(str, params) do
-    # case Pride.valid_or_uuid(str, params) do
-    #   true -> true
-    #   false -> false
-    #   uuid -> uuid
-    # end
-    Pride.valid?(str, params)
+    if Code.ensure_loaded?(Pride), do: Pride.valid?(str, params), else: false
   end
 
-  def is_pride?(_, _), do: false
 end
