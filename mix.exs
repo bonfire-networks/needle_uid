@@ -41,6 +41,7 @@ defmodule Needle.UID.MixProject do
       # for UUID support
       {
         :pride,
+        optional: true,
         # "~> 0.0.1"
         git: "https://github.com/bonfire-networks/pride"
       }

@@ -3,7 +3,7 @@ defmodule Needle.UID do
   use Ecto.ParameterizedType
   import Untangle, except: [dump: 3]
 
-  @pride_enabled Application.compile_env(:needle_uid, :pride_enabled, true)
+  @pride_enabled Code.ensure_loaded?(Pride) and Application.compile_env(:needle_uid, :pride_enabled, true)
   @ulid_enabled Application.compile_env(:needle_uid, :ulid_enabled, true)
 
   @doc "translates alphanumerics into a sentinel ID value"
