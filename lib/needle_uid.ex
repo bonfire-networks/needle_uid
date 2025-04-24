@@ -251,7 +251,7 @@ defmodule Needle.UID do
       iex> valid?("550e8400-e29b-41d4-a716-446655440000")
       true
 
-      iex> is_uuid?("test_3TUIKuXX5mNO2jSA41bsDx")
+      iex> is_pride?("test_3TUIKuXX5mNO2jSA41bsDx") and is_uuid?("test_3TUIKuXX5mNO2jSA41bsDx")
       true
 
       iex> valid?("invalid_id")
@@ -284,7 +284,7 @@ defmodule Needle.UID do
       iex> is_uuid?("550e8400-e29b-41d4-a716-446655440000")
       true
 
-      iex> is_uuid?("test_3TUIKuXX5mNO2jSA41bsDx")
+      iex> is_pride?("test_3TUIKuXX5mNO2jSA41bsDx") and is_uuid?("test_3TUIKuXX5mNO2jSA41bsDx")
       true
 
       iex> is_uuid?("invalid_uuid")
