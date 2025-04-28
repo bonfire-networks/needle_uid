@@ -37,7 +37,10 @@ defmodule Needle.UID.MixProject do
       {:ecto, "~> 3.12"},
       {:untangle, "~> 0.3"},
       # for ULID support
-      {:needle_ulid, "~> 0.3"},
+      {:needle_ulid, 
+      #"~> 0.3", 
+       git: "https://github.com/bonfire-networks/needle_ulid"
+      },
       # for UUID support
       {
         :pride,
