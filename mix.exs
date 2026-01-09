@@ -4,7 +4,7 @@ defmodule Needle.UID.MixProject do
   def project do
     [
       app: :needle_uid,
-      version: "0.0.1",
+      version: "0.0.2",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       description: "Hybrid prefixed UUIDv7 and ULID data type for Ecto",
