@@ -34,20 +34,21 @@ defmodule Needle.UID.MixProject do
 
   defp deps do
     [
-      {:ecto, "~> 3.12"},
-      {:untangle, "~> 0.3"},
+      {:ecto, "~> 3.13"},
+      {:untangle, "~> 0.4"},
       # for ULID support
       {:needle_ulid, 
-      #"~> 0.3", 
-       git: "https://github.com/bonfire-networks/needle_ulid"
+      "~> 0.5", 
+      #  git: "https://github.com/bonfire-networks/needle_ulid"
       },
       # for UUID support
       {
         :pride,
+        "~> 0.0.2",
         optional: true,
-        # "~> 0.0.1"
-        git: "https://github.com/bonfire-networks/pride"
-      }
+        # git: "https://github.com/bonfire-networks/pride"
+      },
+      {:ex_doc, "~> 0.16", only: :dev, runtime: false}
     ]
   end
 end
