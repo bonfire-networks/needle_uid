@@ -110,16 +110,45 @@ defmodule Needle.UID do
     end
   end
 
-  @doc "Returns the timestamp of an encoded or unencoded UID"
+  @doc """
+  Returns the timestamp of an encoded or unencoded UID, in milliseconds since the Unix epoch.
+
+  Works for ULIDs and for UUIDv7, both of which carry a 48-bit millisecond field in their first
+  six bytes. Other UUID versions have no such field and are rejected rather than returning a
+  meaningless number.
+
+  ## Examples
+
+      iex> Needle.UID.timestamp("0188a516-bc8c-7c5a-9b68-12651f558b9e")
+      {:ok, 1686396910732}
+
+  A ULID minted at the same instant reports the same timestamp, as both encode it in the
+  same leading 48 bits:
+
+      iex> Needle.UID.timestamp("01H2JHDF4CP8FCK4SMXPHW2N5J")
+      {:ok, 1686396910732}
+
+      iex> Needle.UID.timestamp("7232b37d-fc13-44c0-8e1b-9a5a07e24921")
+      {:error, "Not a UUIDv7"}
+
+      iex> Needle.UID.timestamp("not-a-uuid")
+      {:error, "Not recognised as a valid UUID or ULID"}
+  """
   if @ulid_enabled do
     def timestamp(<<_::bytes-size(26)>> = encoded) do
       Needle.ULID.timestamp(encoded)
     end
   end
 
-  def timestamp(encoded) do
-    debug(encoded, "TODO")
-    raise "#TODO for UUID"
+  def timestamp(<<ms::unsigned-size(48), 7::4, _::76>>), do: {:ok, ms}
+
+  def timestamp(<<_::bytes-size(16)>>), do: {:error, "Not a UUIDv7"}
+
+  def timestamp(encoded) when is_binary(encoded) do
+    case Ecto.UUID.dump(encoded) do
+      {:ok, raw} -> timestamp(raw)
+      :error -> {:error, "Not recognised as a valid UUID or ULID"}
+    end
   end
 
   @doc """
